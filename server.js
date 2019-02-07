@@ -21,7 +21,7 @@ mongoose.connect("mongodb://localhost/unit18Populater", { useNewUrlParser: true 
 //Routes
 //=========================
 
-app.get("/scrape", function (req, res) {
+app.get("/news", function (req, res) {
     axios.get("https://www.sfchronicle.com/").then(function (response) {
         var $ = cheerio.load(response.data);
 

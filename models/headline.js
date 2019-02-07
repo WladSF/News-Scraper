@@ -12,11 +12,6 @@ var HeadlineSchema = new Schema({
         link: String,
         required: true
     },
-
-    comment: {
-        type: Schema.Types.ObjectId,
-        ref: "comment"
-    }
 });
 
 var Headline = mongoose.model("Headline", HeadlineSchema);
