@@ -1,14 +1,18 @@
+//Dependencies
+//=========================
 var express = require("express");
 var logger = require("morgan");
 var mongoose = require("mongoose");
 
+//Used to scrape
+//=========================
 var axios = require("axios");
 var cheerio = require("cheerio");
 
-var db = require("./models");
+var db = require("./models/Index");
 
-var PORT = 3000;
-
+//Connection
+//=========================
 var app = express();
 
 app.use(logger("dev"));
@@ -16,7 +20,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"));
 
-mongoose.connect("mongodb://localhost/unit18Populater", { useNewUrlParser: true });
+// Handlebars
+//=========================
+var exphbs = require("express-handlebars");
+app.engine("handlebars", exphbs({ defaultLayout: "main" }));
+app.set("view engine", "handlebars");
+
+mongoose.connect("mongodb://localhost/news-scraper", { useNewUrlParser: true });
 
 //Routes
 //=========================
@@ -29,12 +39,10 @@ app.get("/news", function (req, res) {
 
             var result = {};
 
-            result.title = $(this)
-                .children("a")
-                .text();
-            result.link = $(this)
-                .children("a")
-                .attr("href");
+            result.title = $(this).children("h2").text();
+            result.summary = $(this).children("p").text();
+            result.link = $(this).children("a").attr("href");
+
             db.Headline.create(result)
                 .then(function (dbHeadline) {
                     console.log(dbHeadline);
@@ -43,19 +51,48 @@ app.get("/news", function (req, res) {
                     console.log(er);
                 });
         });
-
         res.send("Scrape completed");
     });
 });
 
-app.get("/headlines", function(req, res) {
+app.get("/headlines", function (req, res) {
     db.Headline.find({})
-    .then(function(dbHeadline) {
-        res.json(dbHeadline);
-    })
-    .catch(function(err) {
-        res.json(err);
-    });
+        .then(function (dbHeadline) {
+            res.json(dbHeadline);
+        })
+        .catch(function (err) {
+            res.json(err);
+        });
 });
 
-app.get("/headlines/:id")
+
+// Route for grabbing a specific Article by id, populate it with its note
+app.get("/headlines/:id", function (req, res) {
+    db.Headline.findOne({ _id: req.params.id })
+        .populate("note")
+        .then(function (dbHeadline) {
+            res.json(dbHeadline);
+        })
+        .catch(function (err) {
+            res.json(err);
+        });
+});
+
+app.post("/headlines/:id", function (req, res) {
+    db.Note.create(req.body)
+        .then(function (dbNote) {
+            return db.Headline.findOneAndUpdate({ _id: req.params.id }, { note: dbNote_id }, { new: true });
+        })
+        .then(function (dbHeadline) {
+            res.json(dbHeadline);
+        })
+        .catch(function (err) {
+            res.json(err);
+        });
+})
+
+
+// Start the server
+app.listen(3000, function () {
+    console.log("App running on port 3000!");
+});
