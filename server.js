@@ -91,7 +91,6 @@ app.post("/headlines/:id", function (req, res) {
         });
 })
 
-
 // Start the server
 app.listen(3000, function () {
     console.log("App running on port 3000!");

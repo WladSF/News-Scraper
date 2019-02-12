@@ -6,11 +6,11 @@ var HeadlineSchema = new Schema({
 
     title: {
         type: String,
-        required: true
+        required: false
     },
     link: {
         link: String,
-        required: true
+        required: false
     },
 
     comment: {
