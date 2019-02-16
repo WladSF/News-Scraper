@@ -35,23 +35,32 @@ app.get("/news", function (req, res) {
     axios.get("https://www.sfchronicle.com/").then(function (response) {
         var $ = cheerio.load(response.data);
 
-        $("headline h2").each(function (i, element) {
+        const HeadlinesInProgress = [];
+
+        $(".prem-block").each(function (i, element) {
 
             var result = {};
 
-            result.title = $(this).children("h2").text();
-            result.summary = $(this).children("p").text();
+            result.title = $(this).find("h2").text();
+            // result.summary = $(this).find(".blurb").text();
+            result.summary = $(this).find(".blurb").text();
             result.link = $(this).children("a").attr("href");
 
-            db.Headline.create(result)
-                .then(function (dbHeadline) {
-                    console.log(dbHeadline);
-                })
-                .catch(function (err) {
-                    console.log(er);
-                });
+            HeadlinesInProgress.push(db.Headline.create(result))
+                // .then(function (dbHeadline) {
+                //     console.log(dbHeadline);
+                // })
+                // .catch(function (err) {
+                //     console.log(er);
+                // });
         });
-        res.send("Scrape completed");
+
+        Promise.all(HeadlinesInProgress).then(() => {
+            res.send("Scrape completed");
+        })
+        .catch((err) => {
+            console.log(err);
+        })
     });
 });
 
