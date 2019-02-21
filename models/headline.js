@@ -13,6 +13,11 @@ var HeadlineSchema = new Schema({
         required: false
     },
 
+    summary: {
+        type: String,
+        required: true
+    },
+
     comment: {
         type: Schema.Types.ObjectId,
         ref: "Note"

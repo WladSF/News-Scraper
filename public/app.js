@@ -29,7 +29,7 @@ $.getJSON("/headlines", function(data) {
         $("#notes").append("<input id='titleinput' name='title' >");
         // A textarea to add a new note body
         $("#notes").append("<textarea id='bodyinput' name='body'></textarea>");
-        // A button to submit a new note, with the id of the article saved to it
+        // A button to submit a new note, with the id of the headline saved to it
         $("#notes").append("<button data-id='" + data._id + "' id='savenote'>Save Note</button>");
   
         // If there's a note in the headline
@@ -50,7 +50,7 @@ $.getJSON("/headlines", function(data) {
     // Run a POST request to change the note, using what's entered in the inputs
     $.ajax({
       method: "POST",
-      url: "/articles/" + thisId,
+      url: "/headlines/" + thisId,
       data: {
         // Value taken from title input
         title: $("#titleinput").val(),

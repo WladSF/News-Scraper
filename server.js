@@ -1,50 +1,78 @@
-//Dependencies
+//DEPENDENCIES
 //=========================
+// Express for routing
 var express = require("express");
+
+// Morgan for logging
 var logger = require("morgan");
+
+// Mongoose for object modeling
 var mongoose = require("mongoose");
 
-//Used to scrape
+//USED TO SCRAPE
 //=========================
+// Axios and cheerio for scraping
+// Axios is a promised-based http library, similar to jQuery's Ajax method
+// It works on the client and on the server
 var axios = require("axios");
 var cheerio = require("cheerio");
 
+// Require all models
 var db = require("./models/Index");
 
-//Connection
+//CONNECTION
 //=========================
+// Initialize express
 var app = express();
 
+
+// Use Morgan logger for logging requests
 app.use(logger("dev"));
+// Parse request body as JSON
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+// Make a static folder public
 app.use(express.static("public"));
 
-// Handlebars
+// HANDLEBARS
 //=========================
+// Express handlebars for rendering db content to dom
 var exphbs = require("express-handlebars");
 app.engine("handlebars", exphbs({ defaultLayout: "main" }));
 app.set("view engine", "handlebars");
 
-mongoose.connect("mongodb://localhost/news-scraper", { useNewUrlParser: true });
+// Connect to the Mongo DB
+var MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost/newsScraper";
+mongoose.connect(MONGODB_URI, { useNewUrlParser: true });
 
 //Routes
 //=========================
 
+app.get("/", function (req, res) {
+    res.render('index')
+});
+
 app.get("/news", function (req, res) {
+
+    // Axios grabs the body of the html
     axios.get("https://www.sfchronicle.com/").then(function (response) {
+        // Then, load that into cheerio and save it to $ for a shorthand selector
         var $ = cheerio.load(response.data);
 
         const HeadlinesInProgress = [];
 
+        // Grab every article in the prem-block class, and do the following: 
         $(".prem-block").each(function (i, element) {
-
+            // Save an empty result object
             var result = {};
 
-            result.title = $(this).find("h2").text();
-            // result.summary = $(this).find(".blurb").text();
-            result.summary = $(this).find(".blurb").text();
-            result.link = $(this).children("a").attr("href");
+            // Add the title, summary, image and link of every article (headline) and save them as proporties of the result object
+            result.title = $(this).children("h2").text();
+            result.summary = $(this).find("span").text();
+            // result.summary = $(this).children("span").text();
+            result.link = $(this).find("a").attr("href");
+            // result.link = $(this).find("without_u").attr("href")
+            console.log(result)
 
             HeadlinesInProgress.push(db.Headline.create(result))
                 // .then(function (dbHeadline) {
@@ -53,6 +81,7 @@ app.get("/news", function (req, res) {
                 // .catch(function (err) {
                 //     console.log(er);
                 // });
+                
         });
 
         Promise.all(HeadlinesInProgress).then(() => {
@@ -61,6 +90,7 @@ app.get("/news", function (req, res) {
         .catch((err) => {
             console.log(err);
         })
+        // res.redirect("/headlines");
     });
 });
 
@@ -70,35 +100,86 @@ app.get("/headlines", function (req, res) {
             res.json(dbHeadline);
         })
         .catch(function (err) {
-            res.json(err);
+            console.log(err);
         });
 });
 
+// Route for getting all headlines from the db
+app.post("/save", function (req, res) {
+    // console.log(req.body)
+	db.Headline.create(req.body)
+	.then(function (dbHeadline) {
+		// If we were able to successfully find Headlines, send them back to the client
+		console.log(dbHeadline)
+	})
+	.catch(function (err) {
+		// If an error occurred, send it to the client
+		console.log(err);
+	});
+})
 
-// Route for grabbing a specific Article by id, populate it with its note
-app.get("/headlines/:id", function (req, res) {
+app.put("/delete", function (req, res) {
+	// console.log(req.body.id)
+	db.Haedline.remove({_id:req.body.id})
+	.then(function (dbHeadline) {
+		// If we were able to successfully find Headlines, send them back to the client
+		console.log(dbHeadline)
+	}).catch(function (err) {
+		// If an error occurred, send it to the client
+		console.log(err);
+	});
+});
+
+app.delete("/delete-all", function (req, res) {
+	db.Headline.remove({})
+	.then(function (dbHeadline) {
+		// If we were able to successfully find Headlines, send them back to the client
+		console.log("All Deleted")
+	}).catch(function (err) {
+		// If an error occurred, send it to the client
+		console.log(err);
+	});
+});
+
+app.put("/delete-note", function (req, res) {
+	console.log(req.body.id)
+  	db.Note.remove({_id:req.body.id})
+	.then(function (dbNote) {
+		// If we were able to successfully find Headlines, send them back to the client
+		console.log(dbNote)
+	}).catch(function (err) {
+		// If an error occurred, send it to the client
+		console.log(err);
+	});
+});
+
+app.post("/new-note", function (req, res) {
+	// console.log({'title': req.body.title, 'body': req.body.body}, req.body.artId)
+	db.Note.create({'title': req.body.title, 'body': req.body.body})
+	.then(function (dbNote) {
+		// If we were able to successfully find Headlines, send them back to the client
+		console.log(req.body.artId)
+		return db.Headline.findOneAndUpdate({ _id: req.body.artId }, { $push: { note: dbNote._id }}, { new: true });
+	}).then(function(dbHeadline){
+		console.log(dbHeadline)
+	}).catch(function (err) {
+		// If an error occurred, send it to the client
+		console.log(err);
+	});
+});
+
+// Route for grabbing a specific Headline by id, populate it with its note
+app.get("/headline-notes/:id", function (req, res) {
     db.Headline.findOne({ _id: req.params.id })
         .populate("note")
         .then(function (dbHeadline) {
-            res.json(dbHeadline);
+            console.log(dbHeadline)
+            res.render('listing', {data: dbHeadline});
         })
         .catch(function (err) {
             res.json(err);
         });
 });
-
-app.post("/headlines/:id", function (req, res) {
-    db.Note.create(req.body)
-        .then(function (dbNote) {
-            return db.Headline.findOneAndUpdate({ _id: req.params.id }, { note: dbNote_id }, { new: true });
-        })
-        .then(function (dbHeadline) {
-            res.json(dbHeadline);
-        })
-        .catch(function (err) {
-            res.json(err);
-        });
-})
 
 // Start the server
 app.listen(3000, function () {
